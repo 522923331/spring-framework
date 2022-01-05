@@ -228,6 +228,7 @@ public class InjectionMetadata {
 				field.set(target, getResourceToInject(target, requestingBeanName));
 			}
 			else {
+				//如果pvs中已经有当前注入点的值了，则跳过注入。（也即实现了MergedBeanDefinitionPostProcessor.postProcessMergedBeanDefinition()方法，并给属性赋值）
 				if (checkPropertySkipping(pvs)) {
 					return;
 				}
