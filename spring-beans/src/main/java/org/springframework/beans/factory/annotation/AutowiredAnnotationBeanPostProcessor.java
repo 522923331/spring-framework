@@ -394,7 +394,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 	@Override
 	public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
-		//找注入点（所有被@Autowired注解了的Field或method）
+		//所有注入点的集合（所有被@Autowired注解了的Field或method）
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
 			metadata.inject(bean, beanName, pvs);
@@ -452,6 +452,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					if (metadata != null) {
 						metadata.clear(pvs);
 					}
+					//解析注入点并缓存，查看属性上是否有注解，方法上是否有注解，如果有则构造注入点
 					metadata = buildAutowiringMetadata(clazz);
 					this.injectionMetadataCache.put(cacheKey, metadata);
 				}
@@ -461,6 +462,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	}
 
 	private InjectionMetadata buildAutowiringMetadata(Class<?> clazz) {
+		//如果一个bean的类型是string...那么根本不需要依赖注入
 		if (!AnnotationUtils.isCandidateClass(clazz, this.autowiredAnnotationTypes)) {
 			return InjectionMetadata.EMPTY;
 		}
@@ -470,21 +472,24 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 		do {
 			final List<InjectionMetadata.InjectedElement> currElements = new ArrayList<>();
-
+			//遍历targetClass中所有的Field
 			ReflectionUtils.doWithLocalFields(targetClass, field -> {
+				//field上是否存在@Autowired、@Value、@Inject注解
 				MergedAnnotation<?> ann = findAutowiredAnnotation(field);
 				if (ann != null) {
+					//如果属性是static修饰的，那么直接return。
 					if (Modifier.isStatic(field.getModifiers())) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation is not supported on static fields: " + field);
 						}
 						return;
 					}
+					//构造注入点，判断Autowired的required是否为true，默认是true，也即如果注入的属性不是一个bean，那么会报错，如果是false，则可正常运行
 					boolean required = determineRequiredStatus(ann);
 					currElements.add(new AutowiredFieldElement(field, required));
 				}
 			});
-
+			//遍历targetClass中所有的Method，原理同上
 			ReflectionUtils.doWithLocalMethods(targetClass, method -> {
 				Method bridgedMethod = BridgeMethodResolver.findBridgedMethod(method);
 				if (!BridgeMethodResolver.isVisibilityBridgeMethodPair(method, bridgedMethod)) {
@@ -498,6 +503,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						}
 						return;
 					}
+					//注解方法最好有入参，这里并没有return，也就是说方法会执行
 					if (method.getParameterCount() == 0) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation should only be used on methods with parameters: " +
@@ -629,6 +635,9 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 			Field field = (Field) this.member;
 			Object value;
 			if (this.cached) {
+				//对于原型bean，第一次创建的时候也找注入点，然后进行注入，此时cached为false，注入完了之后cached为true，
+				//第二次创建的时候，先找注入点（此时会拿缓存好的注入点），也就是AutowiredFieldElement对象，此时cached为true
+				//注入点内并没有缓存被注入的具体bean对象，而是beanName，这样就能保证注入到不同的原型bean对象
 				try {
 					value = resolvedCachedArgument(beanName, this.cachedFieldValue);
 				}
@@ -638,6 +647,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 			}
 			else {
+				//根据field从BeanFactory中查到的匹配的Bean对象
 				value = resolveFieldValue(field, bean, beanName);
 			}
 			if (value != null) {

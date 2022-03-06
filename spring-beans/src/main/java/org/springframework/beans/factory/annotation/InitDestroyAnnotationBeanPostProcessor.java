@@ -244,9 +244,10 @@ public class InitDestroyAnnotationBeanPostProcessor
 					}
 				}
 			});
-
+			//下面的index处为0，代表，如果父类有初始化方法，那么就把父类的初始化方法放在前面，意即先执行父类的初始化方法
 			initMethods.addAll(0, currInitMethods);
 			destroyMethods.addAll(currDestroyMethods);
+			//这里是继续遍历父类，看父类中是否定义有initMethod和destroyMethod，这里可以理解为 当销毁当前bean时，如果父类也有销毁方法，那么也同时销毁父类。初始化方法亦然
 			targetClass = targetClass.getSuperclass();
 		}
 		while (targetClass != null && targetClass != Object.class);

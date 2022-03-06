@@ -71,6 +71,7 @@ public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContex
 	 * @see #setConfigLocations
 	 * @see #afterPropertiesSet()
 	 */
+	// 如果已经有 ApplicationContext 并需要配置成父子关系，那么调用这个构造方法
 	public ClassPathXmlApplicationContext(ApplicationContext parent) {
 		super(parent);
 	}
